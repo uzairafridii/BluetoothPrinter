@@ -49,7 +49,6 @@ public class AvailableDeviceAdapter extends BaseAdapter {
         TextView txtName = (TextView) convertView.findViewById(R.id.itemTitle);
 
         txtName.setText(mData.get(position).getName());
-
         txtName.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
