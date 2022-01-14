@@ -5,7 +5,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
 import androidx.core.app.ActivityCompat;
@@ -21,6 +20,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
@@ -65,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
     ArrayAdapter pairedDeviceListViewAdapter;
     ListView availableDeviceListView, pairedDeviceListView;
     AppCompatButton closeBtn, scanBtn;
+    LocationManager locationManager;
 
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -114,10 +115,14 @@ public class MainActivity extends AppCompatActivity {
         scanBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mDeviceList.clear();
-                adapter.notifyDataSetChanged();
-                bluetoothAdapter.startDiscovery();
-                progressBar.setVisibility(View.VISIBLE);
+                if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    mDeviceList.clear();
+                    adapter.notifyDataSetChanged();
+                    bluetoothAdapter.startDiscovery();
+                    progressBar.setVisibility(View.VISIBLE);
+                } else {
+                    Toast.makeText(MainActivity.this, "Please enable gps to scan available device ", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -135,6 +140,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void init() {
+        // location manage for gps checking
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
         // init bluetooth adapter
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         btn = findViewById(R.id.connect);
@@ -165,14 +173,22 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(View v) {
                         // scan button to start bluetooth available device scanning
-                        if (checkLocationPermission()) {
-                            mDeviceList.clear();
-                            bluetoothAdapter.startDiscovery();
+                        if (bluetoothAdapter.isEnabled()) {
+                            if (checkLocationPermission()) {
+                                if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                                    mDeviceList.clear();
+                                    bluetoothAdapter.startDiscovery();
+                                } else {
+                                    Toast.makeText(MainActivity.this, "Please enable gps to scan available device", Toast.LENGTH_SHORT).show();
+                                }
+                            } else {
+                                requestLocationPermission();
+                            }
                         } else {
-                            requestPermissions(new String[]{
-                                            Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                                    101);
+                            showBluetoothEnableDialog();
+
                         }
+
                     }
                 });
 
@@ -200,7 +216,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // bluetooth enable activity result
-    ActivityResultLauncher<Intent> launchSomeActivity = registerForActivityResult(
+    ActivityResultLauncher<Intent> launchBluetoothActivity = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 if (result.getResultCode() == Activity.RESULT_OK) {
@@ -219,9 +235,14 @@ public class MainActivity extends AppCompatActivity {
             getBluetoothPairedDeviceList();
         } else {
             //Prompt user to turn on Bluetooth
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            launchSomeActivity.launch(enableBtIntent);
+            showBluetoothEnableDialog();
         }
+    }
+
+    // show dialog to enable bluetooth
+    private void showBluetoothEnableDialog() {
+        Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+        launchBluetoothActivity.launch(enableBtIntent);
     }
 
     // dummy array list
@@ -292,6 +313,7 @@ public class MainActivity extends AppCompatActivity {
     @RequiresApi(api = Build.VERSION_CODES.M)
     public void getBluetoothPairedDeviceList() {
         // get bluetooth paired device list
+        pairedDeviceList.clear();
         final BluetoothConnection[] bluetoothDevicesList = (new BluetoothPrintersConnections()).getList();
         if (bluetoothDevicesList != null && bluetoothDevicesList.length != 0) {
             // make list of device from bluetooth connection list
@@ -319,7 +341,6 @@ public class MainActivity extends AppCompatActivity {
                     selectedDevice = bluetoothDevicesList[position];
                     btn.setText("Print");
                     pairedDeviceBottomSheetDialog.dismiss();
-                    Toast.makeText(MainActivity.this, "" + selectedDevice, Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -398,21 +419,26 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-
             if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
                 final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
                 if (state == BluetoothAdapter.STATE_ON) {
-                    availableDeviceBottomSheetDialog.show();
+                    if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                        bluetoothAdapter.startDiscovery();
+                        availableDeviceBottomSheetDialog.show();
+                    } else {
+                        Toast.makeText(MainActivity.this, "Please enable gps to scan available device", Toast.LENGTH_SHORT).show();
+                    }
                 } else if (state == BluetoothAdapter.STATE_OFF) {
+                    if (bluetoothAdapter.isDiscovering()) {
+                        bluetoothAdapter.cancelDiscovery();
+                    }
                     availableDeviceBottomSheetDialog.dismiss();
                 }
-            }
-            else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
+            } else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
                 progressBar.setVisibility(View.VISIBLE);
                 availableDeviceBottomSheetDialog.show();
 
-            }
-            else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
+            } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 progressBar.setVisibility(View.GONE);
                 if (mDeviceList.size() > 0) {
                     // click on list item in bottom sheet
@@ -432,8 +458,7 @@ public class MainActivity extends AppCompatActivity {
                     // availableDeviceBottomSheetDialog.dismiss();
                     Toast.makeText(MainActivity.this, "Please Scan Again No Available Device Found", Toast.LENGTH_SHORT).show();
                 }
-            }
-            else if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+            } else if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice device = (BluetoothDevice) intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 // if (device.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.IMAGING)
                 if (device.getName() != null && !mDeviceList.contains(device))
@@ -443,5 +468,4 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
-
 }

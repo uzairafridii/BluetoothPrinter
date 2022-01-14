@@ -12,9 +12,11 @@ public class AsyncEscPosPrinter extends EscPosPrinterSize {
         this.printerConnection = printerConnection;
     }
 
+    // get device connection
     public DeviceConnection getPrinterConnection() {
         return this.printerConnection;
     }
+
 
     public AsyncEscPosPrinter setTextToPrint(String textToPrint) {
         this.textToPrint = textToPrint;

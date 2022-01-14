@@ -17,6 +17,7 @@
         android:textSize="22sp" />
 
     <ListView
+        android:footerDividersEnabled="true"
         android:id="@+id/pairedDeviceList"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

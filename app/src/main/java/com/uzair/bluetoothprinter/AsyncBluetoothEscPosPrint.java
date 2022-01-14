@@ -16,12 +16,14 @@ public class AsyncBluetoothEscPosPrint extends AsyncEscPosPrint {
             return AsyncEscPosPrint.FINISH_NO_PRINTER;
         }
 
-
+        // get printer connection
         AsyncEscPosPrinter printerData = printersData[0];
         DeviceConnection deviceConnection = printerData.getPrinterConnection();
 
+        // update progress dialog
         this.publishProgress(AsyncEscPosPrint.PROGRESS_CONNECTING);
 
+        // check connection is success or not
         if (deviceConnection == null) {
             printersData[0] = new AsyncEscPosPrinter(
                     BluetoothPrintersConnections.selectFirstPaired(),
@@ -29,9 +31,11 @@ public class AsyncBluetoothEscPosPrint extends AsyncEscPosPrint {
                     printerData.getPrinterWidthMM(),
                     printerData.getPrinterNbrCharactersPerLine()
             );
+            // set print data
             printersData[0].setTextToPrint(printerData.getTextToPrint());
         } else {
             try {
+                // connect printer device
                 deviceConnection.connect();
             } catch (EscPosConnectionException e) {
                 e.printStackTrace();

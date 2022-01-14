@@ -8,21 +8,19 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
 
-import androidx.recyclerview.widget.RecyclerView;
-
 import java.util.List;
 
 public class AvailableDeviceAdapter extends BaseAdapter {
     private List<BluetoothDevice> mData;
     private Context context;
-    private OnPairButtonClickListener mListener;
+    private OnPairItemClickListener mListener;
 
     public AvailableDeviceAdapter(List<BluetoothDevice> mData, Context context) {
         this.mData = mData;
         this.context = context;
     }
 
-    public void setListener(OnPairButtonClickListener listener) {
+    public void setListener(OnPairItemClickListener listener) {
         mListener = listener;
     }
 
@@ -59,7 +57,7 @@ public class AvailableDeviceAdapter extends BaseAdapter {
         return convertView;
     }
 
-    public interface OnPairButtonClickListener {
+    public interface OnPairItemClickListener {
         public abstract void onPairButtonClick(int position);
     }
 }

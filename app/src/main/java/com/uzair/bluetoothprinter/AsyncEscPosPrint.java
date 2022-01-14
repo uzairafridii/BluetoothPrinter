@@ -18,6 +18,7 @@ import java.lang.ref.WeakReference;
 
 public class AsyncEscPosPrint extends AsyncTask<AsyncEscPosPrinter, Integer, Integer> {
 
+    // const for result
     protected final static int FINISH_SUCCESS = 1;
     protected final static int FINISH_NO_PRINTER = 2;
     protected final static int FINISH_PRINTER_DISCONNECTED = 3;
@@ -25,6 +26,7 @@ public class AsyncEscPosPrint extends AsyncTask<AsyncEscPosPrinter, Integer, Int
     protected final static int FINISH_ENCODING_ERROR = 5;
     protected final static int FINISH_BARCODE_ERROR = 6;
 
+    // const for progress dialog
     protected final static int PROGRESS_CONNECTING = 1;
     protected final static int PROGRESS_CONNECTED = 2;
     protected final static int PROGRESS_PRINTING = 3;
@@ -45,17 +47,20 @@ public class AsyncEscPosPrint extends AsyncTask<AsyncEscPosPrinter, Integer, Int
             return AsyncEscPosPrint.FINISH_NO_PRINTER;
         }
 
+        // updated progress
         this.publishProgress(AsyncEscPosPrint.PROGRESS_CONNECTING);
 
         AsyncEscPosPrinter printerData = printersData[0];
 
         try {
+            // check printer connection
             DeviceConnection deviceConnection = printerData.getPrinterConnection();
 
             if (deviceConnection == null) {
                 return AsyncEscPosPrint.FINISH_NO_PRINTER;
             }
 
+            // call a print formatted text method
             EscPosPrinter printer = new EscPosPrinter(
                     deviceConnection,
                     printerData.getPrinterDpi(),
@@ -64,12 +69,16 @@ public class AsyncEscPosPrint extends AsyncTask<AsyncEscPosPrinter, Integer, Int
                     new EscPosCharsetEncoding("windows-1252", 16)
             );
 
+            // update progress to printing
             this.publishProgress(AsyncEscPosPrint.PROGRESS_PRINTING);
 
+            // print the data
             printer.printFormattedTextAndCut(printerData.getTextToPrint());
 
+            // update the progress to printed
             this.publishProgress(AsyncEscPosPrint.PROGRESS_PRINTED);
 
+            // show error message according error
         } catch (EscPosConnectionException e) {
             e.printStackTrace();
             return AsyncEscPosPrint.FINISH_PRINTER_DISCONNECTED;
@@ -84,9 +93,11 @@ public class AsyncEscPosPrint extends AsyncTask<AsyncEscPosPrinter, Integer, Int
             return AsyncEscPosPrint.FINISH_BARCODE_ERROR;
         }
 
+        // show success message
         return AsyncEscPosPrint.FINISH_SUCCESS;
     }
 
+    // pre execute called when task is started.
     protected void onPreExecute() {
         if (this.dialog == null) {
             Context context = weakContext.get();
@@ -106,7 +117,9 @@ public class AsyncEscPosPrint extends AsyncTask<AsyncEscPosPrinter, Integer, Int
         }
     }
 
+    // update progress dialog with message
     protected void onProgressUpdate(Integer... progress) {
+
         switch (progress[0]) {
             case AsyncEscPosPrint.PROGRESS_CONNECTING:
                 this.dialog.setMessage("Connecting printer...");
@@ -125,6 +138,7 @@ public class AsyncEscPosPrint extends AsyncTask<AsyncEscPosPrinter, Integer, Int
         this.dialog.setMax(4);
     }
 
+    // on post execute called when task is completed
     protected void onPostExecute(Integer result) {
         this.dialog.dismiss();
         this.dialog = null;
@@ -135,6 +149,7 @@ public class AsyncEscPosPrint extends AsyncTask<AsyncEscPosPrinter, Integer, Int
             return;
         }
 
+        // get result and show message according result
         switch (result) {
             case AsyncEscPosPrint.FINISH_SUCCESS:
                 new AlertDialog.Builder(context)
