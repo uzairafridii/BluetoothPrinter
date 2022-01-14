@@ -3,35 +3,33 @@ package com.uzair.bluetoothprinter;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.widget.NestedScrollView;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -41,7 +39,6 @@ import com.dantsu.escposprinter.connection.DeviceConnection;
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection;
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections;
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg;
-import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.lang.reflect.Method;
@@ -56,15 +53,17 @@ public class MainActivity extends AppCompatActivity {
     public static final int PERMISSION_BLUETOOTH = 1;
     private BluetoothConnection selectedDevice;
     List<PrintDataModel> list;
-    private ArrayList<BluetoothDevice> mDeviceList;
     Button btn;
     // bluetooth adapter
     BluetoothAdapter bluetoothAdapter;
     // bottom sheet views
-    BottomSheetDialog bottomSheetDialog;
+    BottomSheetDialog availableDeviceBottomSheetDialog, pairedDeviceBottomSheetDialog;
     ProgressBar progressBar;
     AvailableDeviceAdapter adapter;
-    ListView listView;
+    ArrayList<BluetoothDevice> mDeviceList;
+    ArrayList<String> pairedDeviceList;
+    ArrayAdapter pairedDeviceListViewAdapter;
+    ListView availableDeviceListView, pairedDeviceListView;
     AppCompatButton closeBtn, scanBtn;
 
 
@@ -76,23 +75,39 @@ public class MainActivity extends AppCompatActivity {
 
         setUpArrayList();
         init();
-        setBottomSheetDialog();
+        setUpAvailableDeviceBottomSheetDialog();
+        setUpPairedDeviceBottomSheetDialog();
 
     }
 
-    private void setBottomSheetDialog() {
+    // paired device bottom sheet list
+    private void setUpPairedDeviceBottomSheetDialog() {
+        // bottom sheet
+        pairedDeviceBottomSheetDialog = new BottomSheetDialog(MainActivity.this, R.style.SheetDialog);
+        pairedDeviceBottomSheetDialog.setContentView(R.layout.paired_device_bottom_sheet);
+        pairedDeviceBottomSheetDialog.getBehavior().setDraggable(false);
+        // views
+        pairedDeviceListView = pairedDeviceBottomSheetDialog.findViewById(R.id.pairedDeviceList);
+        pairedDeviceList = new ArrayList<>();
+
+
+    }
+
+    // available device bottom sheet list
+    private void setUpAvailableDeviceBottomSheetDialog() {
         //bottom sheet dialog
-        bottomSheetDialog = new BottomSheetDialog(this, R.style.SheetDialog);
-        bottomSheetDialog.setContentView(R.layout.available_device_bottom_sheet);
-        bottomSheetDialog.getBehavior().setDraggable(false);
+        availableDeviceBottomSheetDialog = new BottomSheetDialog(this, R.style.SheetDialog);
+        availableDeviceBottomSheetDialog.setContentView(R.layout.available_device_bottom_sheet);
+        availableDeviceBottomSheetDialog.getBehavior().setDraggable(false);
         // views of bottom sheet
-        closeBtn = bottomSheetDialog.findViewById(R.id.closeBtn);
-        scanBtn = bottomSheetDialog.findViewById(R.id.scanBtn);
-        progressBar = bottomSheetDialog.findViewById(R.id.progressBarBT);
+        closeBtn = availableDeviceBottomSheetDialog.findViewById(R.id.closeBtn);
+        scanBtn = availableDeviceBottomSheetDialog.findViewById(R.id.scanBtn);
+        progressBar = availableDeviceBottomSheetDialog.findViewById(R.id.progressBarBT);
+        availableDeviceListView = availableDeviceBottomSheetDialog.findViewById(R.id.deviceList);
+        // list and adapter for available bluetooth list
         mDeviceList = new ArrayList<BluetoothDevice>();
-        listView = bottomSheetDialog.findViewById(R.id.deviceList);
         adapter = new AvailableDeviceAdapter(mDeviceList, MainActivity.this);
-        listView.setAdapter(adapter);
+        availableDeviceListView.setAdapter(adapter);
 
 
         // scan button click
@@ -110,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
         closeBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                bottomSheetDialog.dismiss();
+                availableDeviceBottomSheetDialog.dismiss();
                 mDeviceList.clear();
                 if (bluetoothAdapter.isDiscovering()) {
                     bluetoothAdapter.cancelDiscovery();
@@ -131,8 +146,10 @@ public class MainActivity extends AppCompatActivity {
                 if (btn.getText().toString().equals("Print")) {
                     printDataIfPermissionIsEnable();
                 } else if (btn.getText().toString().equals("Connect")) {
-                    // Getting the Bluetooth adapter
+
+                    // connect with printer
                     if (checkLocationPermission()) {
+                        // here will show paired device list
                         showPairedDevice();
                     } else {
                         requestLocationPermission();
@@ -147,6 +164,7 @@ public class MainActivity extends AppCompatActivity {
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
+                        // scan button to start bluetooth available device scanning
                         if (checkLocationPermission()) {
                             mDeviceList.clear();
                             bluetoothAdapter.startDiscovery();
@@ -218,30 +236,6 @@ public class MainActivity extends AppCompatActivity {
         list.add(new PrintDataModel("Sixth", "4", 50));
         list.add(new PrintDataModel("Seven", "6", 40));
         list.add(new PrintDataModel("Eight", "3", 60));
-        list.add(new PrintDataModel("First", "2", 120));
-        list.add(new PrintDataModel("Second", "4", 300));
-        list.add(new PrintDataModel("Third", "6", 550));
-        list.add(new PrintDataModel("Fourth", "1", 40));
-        list.add(new PrintDataModel("Fifth", "2", 40));
-        list.add(new PrintDataModel("Sixth", "4", 50));
-        list.add(new PrintDataModel("Seven", "6", 40));
-        list.add(new PrintDataModel("Eight", "3", 60));
-        list.add(new PrintDataModel("First", "2", 120));
-        list.add(new PrintDataModel("Second", "4", 300));
-        list.add(new PrintDataModel("Third", "6", 550));
-        list.add(new PrintDataModel("Fourth", "1", 40));
-        list.add(new PrintDataModel("Fifth", "2", 40));
-        list.add(new PrintDataModel("Sixth", "4", 50));
-        list.add(new PrintDataModel("Seven", "6", 40));
-        list.add(new PrintDataModel("Eight", "3", 60));
-        list.add(new PrintDataModel("First", "2", 120));
-        list.add(new PrintDataModel("Second", "4", 300));
-        list.add(new PrintDataModel("Third", "6", 550));
-        list.add(new PrintDataModel("Fourth", "1", 40));
-        list.add(new PrintDataModel("Fifth", "2", 40));
-        list.add(new PrintDataModel("Sixth", "4", 50));
-        list.add(new PrintDataModel("Seven", "6", 40));
-        list.add(new PrintDataModel("Eight", "3", 60));
 
         // create string builder in bill printing format
         StringBuilder printText = new StringBuilder();
@@ -297,34 +291,45 @@ public class MainActivity extends AppCompatActivity {
     // get list of bluetooth paired device
     @RequiresApi(api = Build.VERSION_CODES.M)
     public void getBluetoothPairedDeviceList() {
-        // get bluetooth peripheral connected device list
+        // get bluetooth paired device list
         final BluetoothConnection[] bluetoothDevicesList = (new BluetoothPrintersConnections()).getList();
         if (bluetoothDevicesList != null && bluetoothDevicesList.length != 0) {
-            final String[] items = new String[bluetoothDevicesList.length];
-            // items[0] = "Default printer";
-            int i = 0;
+            // make list of device from bluetooth connection list
             for (BluetoothConnection device : bluetoothDevicesList) {
-                items[i++] = device.getDevice().getName();
+                pairedDeviceList.add(device.getDevice().getName());
             }
-            AlertDialog.Builder alertDialog = new AlertDialog.Builder(MainActivity.this);
-            alertDialog.setTitle("Bluetooth printer selection");
-            alertDialog.setItems(items, (dialogInterface, i1) -> {
-                int index = i1 - 1;
-                if (index == -1) {
-                    selectedDevice = null;
-                } else {
-                    selectedDevice = bluetoothDevicesList[index];
+
+            // init adapter
+            pairedDeviceListViewAdapter = new ArrayAdapter(MainActivity.this, android.R.layout.simple_list_item_1, pairedDeviceList) {
+                @NonNull
+                @Override
+                public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                    // change item color to white
+                    View view = super.getView(position, convertView, parent);
+                    TextView textView = (TextView) view.findViewById(android.R.id.text1);
+                    textView.setTextColor(Color.WHITE);
+                    return view;
                 }
-                btn.setText("Print");
+            };
+
+            // add click on list view item
+            pairedDeviceListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    selectedDevice = bluetoothDevicesList[position];
+                    btn.setText("Print");
+                    pairedDeviceBottomSheetDialog.dismiss();
+                    Toast.makeText(MainActivity.this, "" + selectedDevice, Toast.LENGTH_SHORT).show();
+                }
             });
 
-            AlertDialog alert = alertDialog.create();
-            alert.setCanceledOnTouchOutside(false);
-            alert.show();
+            // setup adapter and show dialog
+            pairedDeviceListView.setAdapter(pairedDeviceListViewAdapter);
+            pairedDeviceListViewAdapter.notifyDataSetChanged();
+            pairedDeviceBottomSheetDialog.show();
 
         } else {
-
-            Toast.makeText(MainActivity.this, "No Paired Device Found please scan for bluetooth device", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "No Paired Device Found Please Scan For Available Bluetooth Device", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -397,21 +402,22 @@ public class MainActivity extends AppCompatActivity {
             if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
                 final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
                 if (state == BluetoothAdapter.STATE_ON) {
-                    bottomSheetDialog.show();
+                    availableDeviceBottomSheetDialog.show();
                 } else if (state == BluetoothAdapter.STATE_OFF) {
-                    bottomSheetDialog.dismiss();
+                    availableDeviceBottomSheetDialog.dismiss();
                 }
-            } else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
+            }
+            else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
                 progressBar.setVisibility(View.VISIBLE);
-                bottomSheetDialog.show();
+                availableDeviceBottomSheetDialog.show();
 
-            } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
+            }
+            else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 progressBar.setVisibility(View.GONE);
                 if (mDeviceList.size() > 0) {
-                    // show bottom sheet
                     // click on list item in bottom sheet
                     adapter.setListener(position -> {
-                        bottomSheetDialog.dismiss();
+                        availableDeviceBottomSheetDialog.dismiss();
                         BluetoothDevice bluetoothDevice = mDeviceList.get(position);
                         try {
                             Method method = bluetoothDevice.getClass().getMethod("createBond", (Class[]) null);
@@ -423,10 +429,11 @@ public class MainActivity extends AppCompatActivity {
                     });
 
                 } else {
-                    bottomSheetDialog.dismiss();
-                    Toast.makeText(MainActivity.this, "No Available Printer Device Found", Toast.LENGTH_SHORT).show();
+                    // availableDeviceBottomSheetDialog.dismiss();
+                    Toast.makeText(MainActivity.this, "Please Scan Again No Available Device Found", Toast.LENGTH_SHORT).show();
                 }
-            } else if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+            }
+            else if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice device = (BluetoothDevice) intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 // if (device.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.IMAGING)
                 if (device.getName() != null && !mDeviceList.contains(device))
