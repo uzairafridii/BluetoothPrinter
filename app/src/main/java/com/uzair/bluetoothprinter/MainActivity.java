@@ -66,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
     ListView availableDeviceListView, pairedDeviceListView;
     AppCompatButton closeBtn, scanBtn;
     LocationManager locationManager;
+    //StringBuilder printText;
 
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -215,18 +216,6 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    // bluetooth enable activity result
-    ActivityResultLauncher<Intent> launchBluetoothActivity = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == Activity.RESULT_OK) {
-                    // showPairedDevice();
-                } else {
-                    Toast.makeText(MainActivity.this, "Unable to use bluetooth printer . please enable bluetooth", Toast.LENGTH_SHORT).show();
-                }
-            });
-
-
     // if bluetooth is enable then show paired device list
     @RequiresApi(api = Build.VERSION_CODES.M)
     private void showPairedDevice() {
@@ -245,6 +234,17 @@ public class MainActivity extends AppCompatActivity {
         launchBluetoothActivity.launch(enableBtIntent);
     }
 
+    // bluetooth enable activity result
+    ActivityResultLauncher<Intent> launchBluetoothActivity = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    // showPairedDevice();
+                } else {
+                    Toast.makeText(MainActivity.this, "Unable to use bluetooth printer . please enable bluetooth", Toast.LENGTH_SHORT).show();
+                }
+            });
+
     // dummy array list
     private void setUpArrayList() {
 
@@ -259,27 +259,29 @@ public class MainActivity extends AppCompatActivity {
         list.add(new PrintDataModel("Eight", "3", 60));
 
         // create string builder in bill printing format
-        StringBuilder printText = new StringBuilder();
-        // header of bill
-        printText.append("[C]Targets\n");
-        printText.append("=======================================\n\n");
-        printText.append("[L]Name" + " : " + " [C]Qty : " + " [R]Price \n\n");
-
-        int total = 0;
-        // body of bill , add one by one to string builder
-        for (int i = 0; i < list.size(); i++) {
-            int price = list.get(i).getPrice();
-            total = total + price;
-            String name = list.get(i).getName().substring(0, 5);
-            printText.append("[L]" + name + " : [C]" + list.get(i).getQty() + " : [R]" + list.get(i).getPrice() + "\n");
-        }
-
-        // footer of bill
-        printText.append("\n\n[C]=======================================\n");
-        printText.append("[L]Total : " + "[R]" + total);
-
-        TextView textView = findViewById(R.id.text);
-        textView.setText(String.valueOf(printText));
+//        StringBuilder printText = new StringBuilder();
+//        printText.append("[L]Name[C]Qty[R]Price\n");
+//        printText.append("[C]\n");
+//        printText.append("[L] ******************************** \n");
+//        // printText.append("[L]\n");
+//
+//        int total = 0;
+//        // body of bill , add one by one to string builder
+//        for (int i = 0; i < list.size(); i++) {
+//            int price = list.get(i).getPrice();
+//            total = total + price;
+//            String name = list.get(i).getName().substring(0, 5);
+//            printText.append("[L]" + name + "[C]" + list.get(i).getQty() + "[R]" + list.get(i).getPrice()+"\n");
+//            // printText.append("[C]\n");
+//        }
+//
+//        // footer of bill
+//        printText.append("[C]\n");
+//        printText.append("[L]********************************\n");
+//        printText.append("<b><font size='big'>[R]Total</font></b>" + "<b><font size='big'>[R]" + total + "</font></b>");
+//
+//        TextView textView = findViewById(R.id.text);
+//        textView.setText(String.valueOf(printText));
     }
 
     // check permission if bluetooth is enable then print data
@@ -356,27 +358,33 @@ public class MainActivity extends AppCompatActivity {
 
     // print data
     public AsyncEscPosPrinter getAsyncEscPosPrinter(DeviceConnection printerConnection) {
-        SimpleDateFormat format = new SimpleDateFormat("'on' yyyy-MM-dd 'at' HH:mm:ss");
+        //  SimpleDateFormat format = new SimpleDateFormat("'on' yyyy-MM-dd 'at' HH:mm:ss");
         AsyncEscPosPrinter printer = new AsyncEscPosPrinter(printerConnection, 203, 48f, 32);
 
-        // setup string builder for printing data
         StringBuilder printText = new StringBuilder();
-        printText.append("[C]<img>" + PrinterTextParserImg.bitmapToHexadecimalString(printer, this.getApplicationContext().getResources().getDrawableForDensity(R.drawable.download, DisplayMetrics.DENSITY_MEDIUM)) + "</img>\n");
-        printText.append("\n[C]Targets\n");
-        printText.append("==============================\n\n");
+        // header of bill
 
-        // append data in string printText
+    //    printText.append("[C]<img>" + PrinterTextParserImg.bitmapToHexadecimalString(printer, this.getApplicationContext().getResources().getDrawableForDensity(R.drawable.download, DisplayMetrics.DENSITY_MEDIUM)) + "</img>\n\n");
+
+        printText.append("[L]Name[C]Qty[R]Price\n");
+        printText.append("[C]\n");
+        printText.append("[L] ******************************** \n");
+       // printText.append("[L]\n");
+
         int total = 0;
+        // body of bill , add one by one to string builder
         for (int i = 0; i < list.size(); i++) {
             int price = list.get(i).getPrice();
             total = total + price;
-            printText.append("[L]" + list.get(i).getName() + " : [C]" + list.get(i).getQty() + " : [R]" + list.get(i).getPrice() + "\n");
+            String name = list.get(i).getName().substring(0, 5);
+            printText.append("[L]" + name + "[C]" + list.get(i).getQty() + "[R]" + list.get(i).getPrice()+"\n");
+           // printText.append("[C]\n");
         }
 
-        printText.append("[C]\n\n=======================================\n");
-        printText.append("[L]Total : " + "[R]" + total);
-        Log.d("test", "printResult: " + printText);
-
+        // footer of bill
+        printText.append("[C]\n");
+        printText.append("[L]********************************\n");
+        printText.append("<b><font size='big'>[R]Total</font></b>" + "<b><font size='big'>[R]" + total + "</font></b>");
         return printer.setTextToPrint(printText.toString());
 
     }

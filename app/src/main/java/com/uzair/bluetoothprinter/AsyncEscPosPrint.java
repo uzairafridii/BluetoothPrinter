@@ -55,12 +55,11 @@ public class AsyncEscPosPrint extends AsyncTask<AsyncEscPosPrinter, Integer, Int
         try {
             // check printer connection
             DeviceConnection deviceConnection = printerData.getPrinterConnection();
-
             if (deviceConnection == null) {
                 return AsyncEscPosPrint.FINISH_NO_PRINTER;
             }
 
-            // call a print formatted text method
+            // init printer class
             EscPosPrinter printer = new EscPosPrinter(
                     deviceConnection,
                     printerData.getPrinterDpi(),
@@ -106,6 +105,7 @@ public class AsyncEscPosPrint extends AsyncTask<AsyncEscPosPrinter, Integer, Int
                 return;
             }
 
+            // setup progress dialog
             this.dialog = new ProgressDialog(context);
             this.dialog.setTitle("Printing in progress...");
             this.dialog.setMessage("...");

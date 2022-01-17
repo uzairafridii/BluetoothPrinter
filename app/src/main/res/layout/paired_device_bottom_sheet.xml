@@ -17,12 +17,17 @@
         android:textSize="22sp" />
 
     <ListView
-        android:footerDividersEnabled="true"
         android:id="@+id/pairedDeviceList"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:divider="@color/white"
         android:dividerHeight="0.2dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/white"
+        />
 
 
 </LinearLayout>
