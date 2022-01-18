@@ -23,7 +23,6 @@ import android.graphics.Color;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,11 +37,9 @@ import android.widget.Toast;
 import com.dantsu.escposprinter.connection.DeviceConnection;
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection;
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections;
-import com.dantsu.escposprinter.textparser.PrinterTextParserImg;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.lang.reflect.Method;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
 
     public static final int PERMISSION_BLUETOOTH = 1;
     private BluetoothConnection selectedDevice;
-    List<PrintDataModel> list;
+    List<PrintDataModel> dataModelList;
     Button btn;
     // bluetooth adapter
     BluetoothAdapter bluetoothAdapter;
@@ -66,8 +63,6 @@ public class MainActivity extends AppCompatActivity {
     ListView availableDeviceListView, pairedDeviceListView;
     AppCompatButton closeBtn, scanBtn;
     LocationManager locationManager;
-    //StringBuilder printText;
-
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -112,10 +107,11 @@ public class MainActivity extends AppCompatActivity {
         availableDeviceListView.setAdapter(adapter);
 
 
-        // scan button click
+        // scan button click to start scanning for available bluetooth device
         scanBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // if gps is enable then start scanning
                 if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                     mDeviceList.clear();
                     adapter.notifyDataSetChanged();
@@ -127,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // click on bottom sheet close button
+        // click on bottom sheet close button and stop scanning if already in scanning
         closeBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -155,8 +151,7 @@ public class MainActivity extends AppCompatActivity {
                 if (btn.getText().toString().equals("Print")) {
                     printDataIfPermissionIsEnable();
                 } else if (btn.getText().toString().equals("Connect")) {
-
-                    // connect with printer
+                    // check permissions
                     if (checkLocationPermission()) {
                         // here will show paired device list
                         showPairedDevice();
@@ -175,7 +170,9 @@ public class MainActivity extends AppCompatActivity {
                     public void onClick(View v) {
                         // scan button to start bluetooth available device scanning
                         if (bluetoothAdapter.isEnabled()) {
+                            // check location permission
                             if (checkLocationPermission()) {
+                                // check gps is enable or not
                                 if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                                     mDeviceList.clear();
                                     bluetoothAdapter.startDiscovery();
@@ -238,9 +235,7 @@ public class MainActivity extends AppCompatActivity {
     ActivityResultLauncher<Intent> launchBluetoothActivity = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
-                if (result.getResultCode() == Activity.RESULT_OK) {
-                    // showPairedDevice();
-                } else {
+                if (result.getResultCode() == Activity.RESULT_OK) {} else {
                     Toast.makeText(MainActivity.this, "Unable to use bluetooth printer . please enable bluetooth", Toast.LENGTH_SHORT).show();
                 }
             });
@@ -248,15 +243,15 @@ public class MainActivity extends AppCompatActivity {
     // dummy array list
     private void setUpArrayList() {
 
-        list = new ArrayList<>();
-        list.add(new PrintDataModel("First", "2", 120));
-        list.add(new PrintDataModel("Second", "4", 300));
-        list.add(new PrintDataModel("Third", "6", 550));
-        list.add(new PrintDataModel("Fourth", "1", 40));
-        list.add(new PrintDataModel("Fifth", "2", 40));
-        list.add(new PrintDataModel("Sixth", "4", 50));
-        list.add(new PrintDataModel("Seven", "6", 40));
-        list.add(new PrintDataModel("Eight", "3", 60));
+        dataModelList = new ArrayList<>();
+        dataModelList.add(new PrintDataModel("First", "2", 120));
+        dataModelList.add(new PrintDataModel("Second", "4", 300));
+        dataModelList.add(new PrintDataModel("Third", "6", 550));
+        dataModelList.add(new PrintDataModel("Fourth", "1", 40));
+        dataModelList.add(new PrintDataModel("Fifth", "2", 40));
+        dataModelList.add(new PrintDataModel("Sixth", "4", 50));
+        dataModelList.add(new PrintDataModel("Seven", "6", 40));
+        dataModelList.add(new PrintDataModel("Eight", "3", 60));
 
         // create string builder in bill printing format
 //        StringBuilder printText = new StringBuilder();
@@ -323,7 +318,7 @@ public class MainActivity extends AppCompatActivity {
                 pairedDeviceList.add(device.getDevice().getName());
             }
 
-            // init adapter
+            // init list view adapter
             pairedDeviceListViewAdapter = new ArrayAdapter(MainActivity.this, android.R.layout.simple_list_item_1, pairedDeviceList) {
                 @NonNull
                 @Override
@@ -346,6 +341,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+
             // setup adapter and show dialog
             pairedDeviceListView.setAdapter(pairedDeviceListViewAdapter);
             pairedDeviceListViewAdapter.notifyDataSetChanged();
@@ -362,29 +358,38 @@ public class MainActivity extends AppCompatActivity {
         AsyncEscPosPrinter printer = new AsyncEscPosPrinter(printerConnection, 203, 48f, 32);
 
         StringBuilder printText = new StringBuilder();
-        // header of bill
-
-    //    printText.append("[C]<img>" + PrinterTextParserImg.bitmapToHexadecimalString(printer, this.getApplicationContext().getResources().getDrawableForDensity(R.drawable.download, DisplayMetrics.DENSITY_MEDIUM)) + "</img>\n\n");
-
-        printText.append("[L]Name[C]Qty[R]Price\n");
-        printText.append("[C]\n");
-        printText.append("[L] ******************************** \n");
-       // printText.append("[L]\n");
+        /**
+         * header of bill
+          */
+        //    printText.append("[C]<img>" + PrinterTextParserImg.bitmapToHexadecimalString(printer, this.getApplicationContext().getResources().getDrawableForDensity(R.drawable.download, DisplayMetrics.DENSITY_MEDIUM)) + "</img>\n\n");
+        printText.append("[L]Customer Name[R]Uzair Aziz\n");
+        printText.append("[L]Phone[R]03030405060\n");
+        printText.append("[L]Shop Address[R]Dist Kohat KPK\n");
+        printText.append("[L]************[C]************[R]***\n");
 
         int total = 0;
-        // body of bill , add one by one to string builder
-        for (int i = 0; i < list.size(); i++) {
-            int price = list.get(i).getPrice();
+        /**
+        *body of bill , add one by one to string builder
+         */
+        printText.append("[L]<b><font size='wide'>Name</font></b>[C]<b><font size='wide'>Qty</font></b>[R]<b><font size='wide'>Price</font></b>\n");
+        printText.append("[L]************[C]************[R]***\n");
+        for (int i = 0; i < dataModelList.size(); i++) {
+            int price = dataModelList.get(i).getPrice();
             total = total + price;
-            String name = list.get(i).getName().substring(0, 5);
-            printText.append("[L]" + name + "[C]" + list.get(i).getQty() + "[R]" + list.get(i).getPrice()+"\n");
-           // printText.append("[C]\n");
+            String name = dataModelList.get(i).getName().substring(0, 5);
+            printText.append("[L]" + name + "[C]" + dataModelList.get(i).getQty() + "[R]" + dataModelList.get(i).getPrice() + "\n");
         }
 
-        // footer of bill
+        /**
+         *   footer of bill
+          */
+
         printText.append("[C]\n");
-        printText.append("[L]********************************\n");
-        printText.append("<b><font size='big'>[R]Total</font></b>" + "<b><font size='big'>[R]" + total + "</font></b>");
+        printText.append("[L]**********[C]****************[R]**\n");
+        printText.append("<b><font size='wide'>[R]Total</font></b>" + "<b><font size='wide'>[R]" + total + "</font></b>\n");
+        printText.append("<b><font size='wide'>[R]GST LNC</font></b>" + "<b><font size='wide'>[R]5%</font></b>\n");
+        printText.append("<b><font size='wide'>[R]Discount</font></b>" + "<b><font size='wide'>[R]2%</font></b>");
+
         return printer.setTextToPrint(printText.toString());
 
     }
@@ -430,6 +435,7 @@ public class MainActivity extends AppCompatActivity {
             if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
                 final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
                 if (state == BluetoothAdapter.STATE_ON) {
+                    // if gps is enable then start scanning
                     if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                         bluetoothAdapter.startDiscovery();
                         availableDeviceBottomSheetDialog.show();
@@ -442,11 +448,13 @@ public class MainActivity extends AppCompatActivity {
                     }
                     availableDeviceBottomSheetDialog.dismiss();
                 }
-            } else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
+            }
+            else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
                 progressBar.setVisibility(View.VISIBLE);
                 availableDeviceBottomSheetDialog.show();
 
-            } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
+            }
+            else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 progressBar.setVisibility(View.GONE);
                 if (mDeviceList.size() > 0) {
                     // click on list item in bottom sheet
@@ -454,6 +462,7 @@ public class MainActivity extends AppCompatActivity {
                         availableDeviceBottomSheetDialog.dismiss();
                         BluetoothDevice bluetoothDevice = mDeviceList.get(position);
                         try {
+                            // create bond or paired device
                             Method method = bluetoothDevice.getClass().getMethod("createBond", (Class[]) null);
                             method.invoke(bluetoothDevice, (Object[]) null);
                             Toast.makeText(MainActivity.this, "Device is paired now", Toast.LENGTH_SHORT).show();
@@ -466,7 +475,8 @@ public class MainActivity extends AppCompatActivity {
                     // availableDeviceBottomSheetDialog.dismiss();
                     Toast.makeText(MainActivity.this, "Please Scan Again No Available Device Found", Toast.LENGTH_SHORT).show();
                 }
-            } else if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+            }
+            else if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice device = (BluetoothDevice) intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 // if (device.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.IMAGING)
                 if (device.getName() != null && !mDeviceList.contains(device))

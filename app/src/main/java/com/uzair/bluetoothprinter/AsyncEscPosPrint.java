@@ -120,6 +120,7 @@ public class AsyncEscPosPrint extends AsyncTask<AsyncEscPosPrinter, Integer, Int
     // update progress dialog with message
     protected void onProgressUpdate(Integer... progress) {
 
+        // update progress with value
         switch (progress[0]) {
             case AsyncEscPosPrint.PROGRESS_CONNECTING:
                 this.dialog.setMessage("Connecting printer...");
