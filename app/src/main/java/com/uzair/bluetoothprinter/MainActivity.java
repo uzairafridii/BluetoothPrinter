@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 
 import android.Manifest;
 import android.app.Activity;
@@ -19,10 +20,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
+import android.graphics.Paint;
+import android.graphics.pdf.PdfDocument;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -39,9 +46,13 @@ import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection;
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 
 @RequiresApi(api = Build.VERSION_CODES.M)
@@ -134,6 +145,82 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+
+        // click on function button
+        findViewById(R.id.fucntion)
+                .setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+
+                        // add data
+                        TestModel testModel1 = new TestModel(101, 2, 10, 2, 1000);
+                        TestModel testModel2 = new TestModel(102, 3, 5, 3, 600);
+                        TestModel testModel3 = new TestModel(103, 2, 5.5, 4, 1000);
+
+                        // get data with result
+                        TestModel result1 = testFunction(testModel1);
+                        TestModel result2 = testFunction(testModel2);
+                        TestModel result3 = testFunction(testModel3);
+                        // show data in log
+                        Log.d("testModel", " ******* Value Add*****");
+                        Log.d("testModelOne", "onClick: id " + result1.getItemId());
+                        Log.d("testModelOne", "onClick: qty " + result1.getQty());
+                        Log.d("testModelOne", "onClick: dis value " + result1.getDiscVal());
+                        Log.d("testModelOne", "onClick: dis type " + result1.getDisType());
+                        Log.d("testModelOne", "onClick: amount " + result1.getAmount());
+                        Log.d("testModelOne", "onClick: result " + result1.getResult());
+
+                        Log.d("testModel", " ******* Value subtract*****");
+                        Log.d("testModelTwo", "onClick: id " + result2.getItemId());
+                        Log.d("testModelTwo", "onClick: qty " + result2.getQty());
+                        Log.d("testModelThree", "onClick: dis value " + result2.getDiscVal());
+                        Log.d("testModelFour", "onClick: dis type " + result2.getDisType());
+                        Log.d("testModelFifth", "onClick: amount " + result2.getAmount());
+                        Log.d("testModelSixth", "onClick: result " + result2.getResult());
+
+                        Log.d("testModel", "******* Percentage*****");
+                        Log.d("testModelTwo", "onClick: id " + result3.getItemId());
+                        Log.d("testModelTwo", "onClick: qty " + result3.getQty());
+                        Log.d("testModelThree", "onClick: dis value " + result3.getDiscVal());
+                        Log.d("testModelFour", "onClick: dis type " + result3.getDisType());
+                        Log.d("testModelFifth", "onClick: amount " + result3.getAmount());
+                        Log.d("testModelSixth", "onClick: result " + result3.getResult());
+
+
+                    }
+                });
+    }
+
+    // function to show result according disc type
+    private TestModel testFunction(TestModel testModel) {
+        double result = 0;
+        switch (testModel.getDisType()) {
+            case 1: {
+                // qty
+                break;
+            }
+            case 2: {
+                // value +
+                result = testModel.getAmount() + (testModel.getQty() * testModel.getDiscVal());
+                break;
+            }
+
+            case 3: {
+                // value -
+                result = testModel.getAmount() - (testModel.getQty() * testModel.getDiscVal());
+                break;
+            }
+
+            case 4: {
+                //value percentage
+                result = testModel.getAmount() - ((int) (testModel.getAmount() * (testModel.getDiscVal() / 100.0f)));
+                break;
+            }
+        }
+
+        return new TestModel(testModel.getItemId(), testModel.getQty(), testModel.discVal, testModel.getDisType(), testModel.getAmount(), result);
+
     }
 
     private void init() {
@@ -148,9 +235,9 @@ public class MainActivity extends AppCompatActivity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (btn.getText().toString().equals("Print")) {
+                if (btn.getText().toString().trim().equals("Print")) {
                     printDataIfPermissionIsEnable();
-                } else if (btn.getText().toString().equals("Connect")) {
+                } else if (btn.getText().toString().trim().equals("Connect")) {
                     // check permissions
                     if (checkLocationPermission()) {
                         // here will show paired device list
@@ -191,6 +278,149 @@ public class MainActivity extends AppCompatActivity {
                 });
 
 
+        // click on whatsapp button
+        findViewById(R.id.whatsapp)
+                .setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+
+                        if (isStoragePermissionEnabled()) {
+                            try {
+                                // get the file path
+                                Uri uri = FileProvider.getUriForFile(MainActivity.this,
+                                        MainActivity.this.getPackageName() + ".provider", generatePdfFile());
+
+                                // share through whatsapp
+                                Intent share = new Intent();
+                                share.setAction(Intent.ACTION_SEND);
+                                share.setType("application/pdf");
+                                share.putExtra(Intent.EXTRA_STREAM, uri);
+                                share.setPackage("com.whatsapp");
+                                startActivity(Intent.createChooser(share, "Share With:"));
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                                Log.d("pdfError", "onClick: " + e.getMessage());
+                            }
+                        } else {
+                            requestStoragePermission();
+                        }
+                    }
+                });
+
+
+    }
+
+    /// check runtime storage permission
+    private boolean isStoragePermissionEnabled() {
+        if ((ContextCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) ||
+                (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED)) {
+
+            return false;
+        }
+        return true;
+    }
+
+    // request for permission
+    private void requestStoragePermission() {
+        ActivityCompat.requestPermissions(MainActivity.this,
+                new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                101);
+    }
+
+    // create and return pdf file
+    private File generatePdfFile() throws IOException {
+        // storage path
+        String extstoragedir = Environment.getExternalStorageDirectory().getPath();
+        File folder = new File(extstoragedir, "Target");
+
+        // if folder not exist create it
+        if (!folder.exists()) {
+            folder.mkdir();
+        }
+
+        // generate random integer for storage file name
+        Random generator = new Random();
+        int n = 10000;
+        n = generator.nextInt(n);
+        String fname = "Bill" + n + ".pdf";
+
+        // storage resource
+        final File file = new File(folder, fname);
+        if (!file.exists())
+            file.createNewFile();
+        FileOutputStream fOut = new FileOutputStream(file);
+
+
+        // pdf doc
+        PdfDocument pdfDocument = new PdfDocument();
+        Paint paintText = new Paint();
+        Paint forLinePaint = new Paint();
+        /// create page
+        PdfDocument.PageInfo myPageInfo = new PdfDocument.PageInfo.Builder(260, 450, 1)
+                .create();
+        /// set page to document
+        PdfDocument.Page myPage = pdfDocument.startPage(myPageInfo);
+        Canvas canvas = myPage.getCanvas();
+
+        // app name or customer name
+        paintText.setTextSize(15.3f);
+        paintText.setColor(getResources().getColor(R.color.black));
+        canvas.drawText("Targets Live", 100, 25, paintText);
+        // draw line after above text
+        forLinePaint.setStyle(Paint.Style.STROKE);
+        forLinePaint.setPathEffect(new DashPathEffect(new float[]{5, 5}, 0));
+        forLinePaint.setStrokeWidth(1);
+        canvas.drawLine(20, 35, 250, 35, forLinePaint);
+
+
+        /// column title
+        paintText.setTextSize(15.3f);
+        paintText.setColor(getResources().getColor(R.color.black));
+        canvas.drawText("Items", 20, 60, paintText);
+        canvas.drawText("Qty", 110, 60, paintText);
+        canvas.drawText("Price", 200, 60, paintText);
+        canvas.drawText("", 200, 75, paintText);
+        // column values
+        paintText.setTextSize(12.3f);
+        paintText.setColor(getResources().getColor(R.color.grey));
+        int verticalSpace = 75;
+        int total = 0;
+
+        // add items one by one
+        for (int i = 0; i < dataModelList.size(); i++) {
+            total = total + dataModelList.get(i).getPrice();
+            verticalSpace = verticalSpace + 15;
+            canvas.drawText(dataModelList.get(i).getName(), 20, verticalSpace, paintText);
+            canvas.drawText(dataModelList.get(i).getQty(), 110, verticalSpace, paintText);
+            canvas.drawText("" + dataModelList.get(i).getPrice(), 200, verticalSpace, paintText);
+        }
+
+        // draw line after above text
+        forLinePaint.setStyle(Paint.Style.STROKE);
+        forLinePaint.setPathEffect(new DashPathEffect(new float[]{5, 5}, 0));
+        forLinePaint.setStrokeWidth(1);
+        canvas.drawLine(20, verticalSpace + 20, 250, verticalSpace + 20, forLinePaint);
+
+        // total
+        paintText.setTextSize(15.3f);
+        paintText.setColor(getResources().getColor(R.color.black));
+        canvas.drawText("Total", 20, verticalSpace + 45, paintText);
+        canvas.drawText(""+ total, 200, verticalSpace + 45, paintText);
+
+        // finish page
+        pdfDocument.finishPage(myPage);
+
+        /// store pdf file in external storage.
+        pdfDocument.writeTo(fOut);
+        pdfDocument.close();
+
+
+        return file;
     }
 
     // request location permission
@@ -235,7 +465,8 @@ public class MainActivity extends AppCompatActivity {
     ActivityResultLauncher<Intent> launchBluetoothActivity = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
-                if (result.getResultCode() == Activity.RESULT_OK) {} else {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                } else {
                     Toast.makeText(MainActivity.this, "Unable to use bluetooth printer . please enable bluetooth", Toast.LENGTH_SHORT).show();
                 }
             });
@@ -244,6 +475,14 @@ public class MainActivity extends AppCompatActivity {
     private void setUpArrayList() {
 
         dataModelList = new ArrayList<>();
+        dataModelList.add(new PrintDataModel("First", "2", 120));
+        dataModelList.add(new PrintDataModel("Second", "4", 300));
+        dataModelList.add(new PrintDataModel("Third", "6", 550));
+        dataModelList.add(new PrintDataModel("Fourth", "1", 40));
+        dataModelList.add(new PrintDataModel("Fifth", "2", 40));
+        dataModelList.add(new PrintDataModel("Sixth", "4", 50));
+        dataModelList.add(new PrintDataModel("Seven", "6", 40));
+        dataModelList.add(new PrintDataModel("Eight", "3", 60));
         dataModelList.add(new PrintDataModel("First", "2", 120));
         dataModelList.add(new PrintDataModel("Second", "4", 300));
         dataModelList.add(new PrintDataModel("Third", "6", 550));
@@ -309,7 +548,7 @@ public class MainActivity extends AppCompatActivity {
     // get list of bluetooth paired device
     @RequiresApi(api = Build.VERSION_CODES.M)
     public void getBluetoothPairedDeviceList() {
-        // get bluetooth paired device list
+        // clear list and get bluetooth paired device list
         pairedDeviceList.clear();
         final BluetoothConnection[] bluetoothDevicesList = (new BluetoothPrintersConnections()).getList();
         if (bluetoothDevicesList != null && bluetoothDevicesList.length != 0) {
@@ -360,7 +599,7 @@ public class MainActivity extends AppCompatActivity {
         StringBuilder printText = new StringBuilder();
         /**
          * header of bill
-          */
+         */
         //    printText.append("[C]<img>" + PrinterTextParserImg.bitmapToHexadecimalString(printer, this.getApplicationContext().getResources().getDrawableForDensity(R.drawable.download, DisplayMetrics.DENSITY_MEDIUM)) + "</img>\n\n");
         printText.append("[L]Customer Name[R]Uzair Aziz\n");
         printText.append("[L]Phone[R]03030405060\n");
@@ -369,11 +608,12 @@ public class MainActivity extends AppCompatActivity {
 
         int total = 0;
         /**
-        *body of bill , add one by one to string builder
+         *body of bill , add one by one to string builder
          */
-        printText.append("[L]<b><font size='wide'>Name</font></b>[C]<b><font size='wide'>Qty</font></b>[R]<b><font size='wide'>Price</font></b>\n");
+        printText.append("[L]<b>Name</b>[C]<b>Qty</b>[R]<b>Price</b>\n");
         printText.append("[L]************[C]************[R]***\n");
         for (int i = 0; i < dataModelList.size(); i++) {
+
             int price = dataModelList.get(i).getPrice();
             total = total + price;
             String name = dataModelList.get(i).getName().substring(0, 5);
@@ -382,13 +622,13 @@ public class MainActivity extends AppCompatActivity {
 
         /**
          *   footer of bill
-          */
+         */
 
         printText.append("[C]\n");
         printText.append("[L]**********[C]****************[R]**\n");
-        printText.append("<b><font size='wide'>[R]Total</font></b>" + "<b><font size='wide'>[R]" + total + "</font></b>\n");
-        printText.append("<b><font size='wide'>[R]GST LNC</font></b>" + "<b><font size='wide'>[R]5%</font></b>\n");
-        printText.append("<b><font size='wide'>[R]Discount</font></b>" + "<b><font size='wide'>[R]2%</font></b>");
+        printText.append("<b>[R]Total</b>" + "<b>[R]" + total + "</b>\n");
+        printText.append("<b>[R]GST LNC</b>" + "<b>[R]5%</b>\n");
+        printText.append("<b>[R]Discount</b>" + "<b>[R]2%</b>");
 
         return printer.setTextToPrint(printText.toString());
 
@@ -427,7 +667,7 @@ public class MainActivity extends AppCompatActivity {
         registerReceiver(mReceiver, filter);
     }
 
-    // broadcast receiver to detect state ,found device and scan available bluetooth device
+    // broadcast receiver to detect state ,found available device and scan for available bluetooth device
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -486,4 +726,5 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
+
 }
