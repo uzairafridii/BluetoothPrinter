@@ -16,6 +16,7 @@ import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -30,6 +31,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.telephony.PhoneNumberUtils;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -50,6 +52,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -286,22 +289,28 @@ public class MainActivity extends AppCompatActivity {
 
                         if (isStoragePermissionEnabled()) {
                             try {
+                                PackageManager packageManager = getPackageManager();
                                 // get the file path
                                 Uri uri = FileProvider.getUriForFile(MainActivity.this,
                                         MainActivity.this.getPackageName() + ".provider", generatePdfFile());
 
-                                // share through whatsapp
-                                Intent share = new Intent();
-                                share.setAction(Intent.ACTION_SEND);
-                                share.setType("application/pdf");
-                                share.putExtra(Intent.EXTRA_STREAM, uri);
-                                share.setPackage("com.whatsapp");
-                                startActivity(Intent.createChooser(share, "Share With:"));
-
-                            } catch (IOException e) {
+                                Intent i = new Intent(Intent.ACTION_SEND);
+                               // String phone = "+923047901748";
+                                //    String url = "https://api.whatsapp.com/send?phone=" + phone +"&text="+uri;
+                                    i.setPackage("com.whatsapp");
+                                 //   i.setData(Uri.parse(url));
+                                    i.setType("application/pdf");
+                                    i.putExtra(Intent.EXTRA_STREAM, uri);
+                                    if (i.resolveActivity(packageManager) != null) {
+                                        startActivity(i);
+                                    }
+                            }
+                            catch (IOException e) {
                                 e.printStackTrace();
                                 Log.d("pdfError", "onClick: " + e.getMessage());
                             }
+
+
                         } else {
                             requestStoragePermission();
                         }
@@ -356,39 +365,48 @@ public class MainActivity extends AppCompatActivity {
         FileOutputStream fOut = new FileOutputStream(file);
 
 
+        // set pdf height
+        int pdfHeight, itemHeight = 15, header = 150, footer = 120;
+        pdfHeight = (itemHeight * dataModelList.size()) + header + footer;
+
         // pdf doc
         PdfDocument pdfDocument = new PdfDocument();
         Paint paintText = new Paint();
         Paint forLinePaint = new Paint();
         /// create page
-        PdfDocument.PageInfo myPageInfo = new PdfDocument.PageInfo.Builder(260, 450, 1)
+        PdfDocument.PageInfo myPageInfo = new PdfDocument.PageInfo.Builder(260, pdfHeight, 1)
                 .create();
         /// set page to document
         PdfDocument.Page myPage = pdfDocument.startPage(myPageInfo);
         Canvas canvas = myPage.getCanvas();
 
         // app name or customer name
-        paintText.setTextSize(15.3f);
+        paintText.setTextSize(13.3f);
         paintText.setColor(getResources().getColor(R.color.black));
-        canvas.drawText("Targets Live", 100, 25, paintText);
+        canvas.drawText("Customer Name", 20, 25, paintText);
+        canvas.drawText("Uzair Aziz", 160, 25, paintText);
+        canvas.drawText("Phone No", 20, 40, paintText);
+        canvas.drawText("+9304790148", 160, 40, paintText);
+        canvas.drawText("Shop Name", 20, 55, paintText);
+        canvas.drawText("Good Luck", 160, 55, paintText);
         // draw line after above text
         forLinePaint.setStyle(Paint.Style.STROKE);
         forLinePaint.setPathEffect(new DashPathEffect(new float[]{5, 5}, 0));
         forLinePaint.setStrokeWidth(1);
-        canvas.drawLine(20, 35, 250, 35, forLinePaint);
+        canvas.drawLine(20, 70, 250, 70, forLinePaint);
 
 
         /// column title
         paintText.setTextSize(15.3f);
         paintText.setColor(getResources().getColor(R.color.black));
-        canvas.drawText("Items", 20, 60, paintText);
-        canvas.drawText("Qty", 110, 60, paintText);
-        canvas.drawText("Price", 200, 60, paintText);
-        canvas.drawText("", 200, 75, paintText);
+        canvas.drawText("Items", 20, 90, paintText);
+        canvas.drawText("Qty", 110, 90, paintText);
+        canvas.drawText("Price", 200, 90, paintText);
+        canvas.drawText("", 200, 95, paintText);
         // column values
         paintText.setTextSize(12.3f);
         paintText.setColor(getResources().getColor(R.color.grey));
-        int verticalSpace = 75;
+        int verticalSpace = 90;
         int total = 0;
 
         // add items one by one
@@ -407,10 +425,14 @@ public class MainActivity extends AppCompatActivity {
         canvas.drawLine(20, verticalSpace + 20, 250, verticalSpace + 20, forLinePaint);
 
         // total
-        paintText.setTextSize(15.3f);
+        paintText.setTextSize(13.3f);
         paintText.setColor(getResources().getColor(R.color.black));
         canvas.drawText("Total", 20, verticalSpace + 45, paintText);
-        canvas.drawText(""+ total, 200, verticalSpace + 45, paintText);
+        canvas.drawText("" + total, 200, verticalSpace + 45, paintText);
+        canvas.drawText("Disc Value", 20, verticalSpace + 60, paintText);
+        canvas.drawText("20", 200, verticalSpace + 60, paintText);
+        canvas.drawText("GST ", 20, verticalSpace + 75, paintText);
+        canvas.drawText("10", 200, verticalSpace + 75, paintText);
 
         // finish page
         pdfDocument.finishPage(myPage);
@@ -475,6 +497,38 @@ public class MainActivity extends AppCompatActivity {
     private void setUpArrayList() {
 
         dataModelList = new ArrayList<>();
+        dataModelList.add(new PrintDataModel("First", "2", 120));
+        dataModelList.add(new PrintDataModel("Second", "4", 300));
+        dataModelList.add(new PrintDataModel("Third", "6", 550));
+        dataModelList.add(new PrintDataModel("Fourth", "1", 40));
+        dataModelList.add(new PrintDataModel("Fifth", "2", 40));
+        dataModelList.add(new PrintDataModel("Sixth", "4", 50));
+        dataModelList.add(new PrintDataModel("Seven", "6", 40));
+        dataModelList.add(new PrintDataModel("Eight", "3", 60));
+        dataModelList.add(new PrintDataModel("First", "2", 120));
+        dataModelList.add(new PrintDataModel("Second", "4", 300));
+        dataModelList.add(new PrintDataModel("Third", "6", 550));
+        dataModelList.add(new PrintDataModel("Fourth", "1", 40));
+        dataModelList.add(new PrintDataModel("Fifth", "2", 40));
+        dataModelList.add(new PrintDataModel("Sixth", "4", 50));
+        dataModelList.add(new PrintDataModel("Seven", "6", 40));
+        dataModelList.add(new PrintDataModel("Eight", "3", 60));
+        dataModelList.add(new PrintDataModel("First", "2", 120));
+        dataModelList.add(new PrintDataModel("Second", "4", 300));
+        dataModelList.add(new PrintDataModel("Third", "6", 550));
+        dataModelList.add(new PrintDataModel("Fourth", "1", 40));
+        dataModelList.add(new PrintDataModel("Fifth", "2", 40));
+        dataModelList.add(new PrintDataModel("Sixth", "4", 50));
+        dataModelList.add(new PrintDataModel("Seven", "6", 40));
+        dataModelList.add(new PrintDataModel("Eight", "3", 60));
+        dataModelList.add(new PrintDataModel("First", "2", 120));
+        dataModelList.add(new PrintDataModel("Second", "4", 300));
+        dataModelList.add(new PrintDataModel("Third", "6", 550));
+        dataModelList.add(new PrintDataModel("Fourth", "1", 40));
+        dataModelList.add(new PrintDataModel("Fifth", "2", 40));
+        dataModelList.add(new PrintDataModel("Sixth", "4", 50));
+        dataModelList.add(new PrintDataModel("Seven", "6", 40));
+        dataModelList.add(new PrintDataModel("Eight", "3", 60));
         dataModelList.add(new PrintDataModel("First", "2", 120));
         dataModelList.add(new PrintDataModel("Second", "4", 300));
         dataModelList.add(new PrintDataModel("Third", "6", 550));
